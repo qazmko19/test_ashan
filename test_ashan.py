@@ -1,8 +1,8 @@
 # Импорт необходимых модулей/библиотек
 import os
 import pickle
+import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 import requests.exceptions
@@ -64,7 +64,7 @@ def fill_status_codes(fsc_url):
     except requests.exceptions.RequestException:
         logger.error(f"{fsc_url} is unreachable. Status code of this URL is -1")
         status_codes[fsc_url] = -1
-        pass
+        return
 
     logger.info(f"URL: {fsc_url}; Status code: {response.status_code}")
     status_codes[fsc_url] = response.status_code
@@ -79,7 +79,7 @@ def fill_final_urls(ffu_url):
         logger.warning(f"{ffu_url} is having MissingSchema exception. Request send to {'https://' + ffu_url}")
     except requests.exceptions.RequestException:
         logger.error(f"{ffu_url} is unreachable. Unable to check short URL")
-        pass
+        return
 
     parsed_original = urlparse(ffu_url)
     parsed_final = urlparse(response.url)
@@ -89,13 +89,18 @@ def fill_final_urls(ffu_url):
         final_urls[ffu_url] = response.url
 
 
-# Использование потоков для ускорения работы функции fill_status_codes()
-with ThreadPoolExecutor(max_workers=8) as executor:
-    executor.map(fill_status_codes, urls)
+# Использование потоков для ускорения работы функции fill_status_codes() и fill_final_urls()
+threads = []
+for url in urls:
+    thread_fsc = threading.Thread(target=fill_status_codes, args=(url,))
+    thread_ffu = threading.Thread(target=fill_final_urls, args=(url,))
+    thread_fsc.start()
+    thread_ffu.start()
+    threads.append(thread_fsc)
+    threads.append(thread_ffu)
 
-# Использование потоков для ускорения работы функции fill_final_urls()
-with ThreadPoolExecutor(max_workers=8) as executor:
-    executor.map(fill_final_urls, urls)
+for thread in threads:
+    thread.join()
 
 # Конец отсчёта времени работы программы
 end_time = time.time()
