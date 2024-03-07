@@ -89,15 +89,22 @@ def fill_final_urls(ffu_url):
         final_urls[ffu_url] = response.url
 
 
-# Использование потоков для ускорения работы функции fill_status_codes() и fill_final_urls()
+# Использование потоков для ускорения работы функции fill_status_codes()
 threads = []
 for url in urls:
-    thread_fsc = threading.Thread(target=fill_status_codes, args=(url,))
-    thread_ffu = threading.Thread(target=fill_final_urls, args=(url,))
-    thread_fsc.start()
-    thread_ffu.start()
-    threads.append(thread_fsc)
-    threads.append(thread_ffu)
+    thread = threading.Thread(target=fill_status_codes, args=(url,))
+    thread.start()
+    threads.append(thread)
+
+for thread in threads:
+    thread.join()
+
+# Использование потоков для ускорения работы функции fill_final_urls()
+threads = []
+for url in urls:
+    thread = threading.Thread(target=fill_final_urls, args=(url,))
+    thread.start()
+    threads.append(thread)
 
 for thread in threads:
     thread.join()
@@ -124,3 +131,6 @@ logger.info(f"Finished processing URLs. Time is {minutes:02d}:{seconds:02d}:{mil
 # Удаление старых файлов логирования
 delete_old_logs()
 logger.info("Finished deleting old log files")
+
+print(len(status_codes))
+print(len(final_urls))
